@@ -44,20 +44,25 @@ def create_connection(user, password, host, database, port=3306):
     pass
 
 
-def execute_queries(conn, queries, fetch_rows=False):
+def execute_queries(conn, queries, multi_line=False, fetch_rows=False):
     """
     :param conn: handle to database connection
     :param queries: a list of tuples, with each tuple potentially representing a multi-line query
     :param fetch_rows: do you want any rows to be returned?
     """
-
     for query in queries:
+        
         cursor = conn.cursor()
+
+        if multi_line:
+            count = cursor.execute('\n'.join(query))
+        else:
+            count = cursor.execute(query)
+
         if fetch_rows:
-            cursor.execute('\n'.join(query))
+            print(f'{count} rows affected.')
             print(tabulate(cursor.fetchall()))
         else:
-            count = cursor.execute('\n'.join(query))
             print(f'{count} rows affected.')
     pass
 
@@ -130,6 +135,8 @@ def initialize_database(conn):
         cursor = conn.cursor()
         count = cursor.execute(query)
         print(f'{count} rows affected.')
+
+    print('Database initialized successfully.')
     pass
 
 
