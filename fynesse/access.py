@@ -1,6 +1,7 @@
 import urllib.request
 import pymysql
 import os
+from tabulate import tabulate
 
 from .config import *
 
@@ -40,6 +41,24 @@ def create_connection(user, password, host, database, port=3306):
         print(f"Error connecting to the MariaDB Server: {e}")
 
     return conn
+    pass
+
+
+def execute_queries(conn, queries, fetch_rows=False):
+    """
+    :param conn: handle to database connection
+    :param queries: a list of tuples, with each tuple potentially representing a multi-line query
+    :param fetch_rows: do you want any rows to be returned?
+    """
+
+    for query in queries:
+        cursor = conn.cursor()
+        if fetch_rows:
+            cursor.execute('\n'.join(query))
+            print(tabulate(cursor.fetchall()))
+        else:
+            count = cursor.execute('\n'.join(query))
+            print(f'{count} rows affected.')
     pass
 
 
