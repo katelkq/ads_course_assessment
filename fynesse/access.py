@@ -155,10 +155,11 @@ def initialize_table(conn, table):
             count = cursor.execute('\n'.join(query))
             print(f'{count} rows affected.')
 
-        case '':
+        case 'postcode_data':
             # setting up the schema for table `postcode_data`
             cursor = conn.cursor()
-            query = ("DROP TABLE IF EXISTS `postcode_data`;",
+            query = ("USE `property_prices`;",
+                     "DROP TABLE IF EXISTS `postcode_data`;",
                      "CREATE TABLE IF NOT EXISTS `postcode_data` (",
                      "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
                      "`status` enum('live','terminated') NOT NULL,",
