@@ -88,8 +88,6 @@ def download_postcode_data(path):
 
 
 def upload_postcode_data(conn, path):
-    """
-    """
     if path is None:
         path = '.'
 
@@ -104,13 +102,15 @@ def upload_postcode_data(conn, path):
 
 
 def initialize_database(conn):
-    cursor = conn.cursor()
-    query = ("SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";",
+    queries = ("SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";",
              "SET time_zone = \"+00:00\";",
              "CREATE DATABASE IF NOT EXISTS `property_prices` DEFAULT CHARACTER SET utf8 COLLATE utf8_bin;",
              "USE `property_prices`;")
-    count = cursor.execute('\n'.join(query))
-    print(f'{count} rows affected.')
+    
+    for query in queries:
+        cursor = conn.cursor()
+        count = cursor.execute(query)
+        print(f'{count} rows affected.')
     pass
 
 
@@ -121,10 +121,14 @@ def initialize_table(conn, table):
     match table:
         case 'pp_data':
             # setting up the schema for table `pp_data`
+            count = conn.cursor().execute("USE `property_prices`;")
+            print(f'{count} rows affected.')
+
+            count = conn.cursor().execute("DROP TABLE IF EXISTS `pp_data`;")
+            print(f'{count} rows affected.')
+
             cursor = conn.cursor()
-            query = ("USE `property_prices`;",
-                     "DROP TABLE IF EXISTS `pp_data`;",
-                     "CREATE TABLE IF NOT EXISTS `pp_data` (",
+            query = ("CREATE TABLE IF NOT EXISTS `pp_data` (",
                      "`transaction_unique_identifier` tinytext COLLATE utf8_bin NOT NULL,",
                      "`price` int(10) unsigned NOT NULL,",
                      "`date_of_transfer` date NOT NULL,",
@@ -149,18 +153,26 @@ def initialize_table(conn, table):
             # adding the primary key for table `pp_data`
             cursor = conn.cursor()
             query = ("ALTER TABLE `pp_data`",
-                     "ADD PRIMARY KEY (`db_id`);",
-                     "ALTER TABLE `pp_data`",
+                     "ADD PRIMARY KEY (`db_id`);")
+            count = cursor.execute('\n'.join(query))
+            print(f'{count} rows affected.')
+
+            cursor = conn.cursor()
+            query = ("ALTER TABLE `pp_data`",
                      "MODIFY db_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;")
             count = cursor.execute('\n'.join(query))
             print(f'{count} rows affected.')
 
         case 'postcode_data':
             # setting up the schema for table `postcode_data`
+            count = conn.cursor().execute("USE `property_prices`;")
+            print(f'{count} rows affected.')
+
+            count = conn.cursor().execute("DROP TABLE IF EXISTS `postcode_data`;")
+            print(f'{count} rows affected.')
+            
             cursor = conn.cursor()
-            query = ("USE `property_prices`;",
-                     "DROP TABLE IF EXISTS `postcode_data`;",
-                     "CREATE TABLE IF NOT EXISTS `postcode_data` (",
+            query = ("CREATE TABLE IF NOT EXISTS `postcode_data` (",
                      "`postcode` varchar(8) COLLATE utf8_bin NOT NULL,",
                      "`status` enum('live','terminated') NOT NULL,",
                      "`usertype` enum('small', 'large') NOT NULL,",
@@ -186,8 +198,12 @@ def initialize_table(conn, table):
             # adding the primary key
             cursor = conn.cursor()
             query = ("ALTER TABLE `postcode_data`",
-                     "ADD PRIMARY KEY (`db_id`);",
-                     "ALTER TABLE `postcode_data`",
+                     "ADD PRIMARY KEY (`db_id`);")
+            count = cursor.execute('\n'.join(query))
+            print(f'{count} rows affected.')
+
+            cursor = conn.cursor()
+            query = ("ALTER TABLE `postcode_data`",
                      "MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")
             count = cursor.execute('\n'.join(query))
             print(f'{count} rows affected.')
