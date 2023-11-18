@@ -193,7 +193,7 @@ def initialize_table(conn, table):
                        ("ALTER TABLE `postcode_data`",
                         "MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")]
 
-        case '':
+        case 'prices_coordinates_data':
             queries = ["USE `property_prices`;",
                        "DROP TABLE IF EXISTS `prices_coordinates_data`;",
                        ("CREATE TABLE IF NOT EXISTS `prices_coordinates_data` (",
@@ -219,13 +219,6 @@ def initialize_table(conn, table):
 
     for (i, query) in enumerate(queries):
         execute_query(conn, query=query, multi_line=(i>=2), fetch_rows=False)
-    pass
-
-
-def set_index(conn, table, column):
-    query = (f"CREATE INDEX {column}"
-             f"ON {table} ({column});")
-    execute_query(conn, query=query, multi_line=True, fetch_rows=False)
     pass
 
 
