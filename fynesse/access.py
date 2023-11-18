@@ -211,8 +211,11 @@ def initialize_table(conn, table):
                         "`latitude` decimal(11,8) NOT NULL,",
                         "`longitude` decimal(10,8) NOT NULL,",
                         "`db_id` bigint(20) unsigned NOT NULL",
-                        ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;")
-            ]
+                        ") DEFAULT CHARSET=utf8 COLLATE=utf8_bin AUTO_INCREMENT=1;"),
+                        ("ALTER TABLE `postcode_data`",
+                         "ADD PRIMARY KEY (`db_id`);"),
+                        ("ALTER TABLE `postcode_data`",
+                         "MODIFY `db_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,AUTO_INCREMENT=1;")]
 
         case _:
             raise ValueError
