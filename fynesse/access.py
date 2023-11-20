@@ -2,6 +2,7 @@ import urllib.request
 import pymysql
 import os
 from tabulate import tabulate
+import pandas as pd
 
 from .config import *
 
@@ -116,6 +117,20 @@ def upload_postcode_data(conn, path):
              "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '\"'",
              "LINES STARTING BY '' TERMINATED BY '\n';")
     execute_query(conn, query=query, multi_line=True, fetch_rows=False)
+    pass
+
+
+def upload_pc_data(conn, path):
+    if path is None:
+        path = '.'
+
+    for year in range(1995, 2022):
+        print(f'Populating table with data from {year}...')
+        filepath = os.path.join(path, f'pc-{year}.csv')
+        query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `prices_coordinates_data`",
+                 "FIELDS TERMINATED BY ','",
+                 "LINES STARTING BY '' TERMINATED BY '\n';")
+        execute_query(conn, query=query, multi_line=True, fetch_rows=False)
     pass
 
 
