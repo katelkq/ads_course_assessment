@@ -249,7 +249,8 @@ def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coo
 
     else:
         query = f"SELECT * FROM `{table}`;"
-        df = pd.read_sql(query, conn)
+        result = execute_query(conn, query=query)
+        df = pd.DataFrame(list(result))
 
     return df
     pass
