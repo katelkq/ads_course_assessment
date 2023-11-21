@@ -245,9 +245,11 @@ def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coo
     :param local: a boolean specifying whether the data should be read from a local file
     """
     if local:
+        print('Loading dataframe from local file...')
         df = pd.read_csv(filepath)
 
     else:
+        print('Loading dataframe from SQL server...')
         query = f"SELECT * FROM `{table}`;"
         result = execute_query(conn, query=query)
         df = pd.DataFrame(list(result))
