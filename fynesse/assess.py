@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 from .config import *
 
@@ -34,10 +35,20 @@ def dist(point1, point2, dist):
     pass
 
 
-def data():
-    """Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame."""
-    df = access.data()
-    raise NotImplementedError
+def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coordinates-data.csv', local=True):
+    """
+    Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame.
+    """
+    df = access.data(conn, table, filepath, local)
+    df.columns = pc_fields
+
+    df['date_of_transfer']= pd.to_datetime(df['date_of_transfer'])
+    df['property_type'] = df['property_type'].astype('category')
+    df['new_build_flag'] = df['new_build_flag'].astype('category')
+    df['tenure_type'] = df['tenure_type'].astype('category')
+    return df
+    pass
+
 
 def query(data):
     """Request user input for some aspect of the data."""
