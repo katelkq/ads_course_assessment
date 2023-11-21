@@ -62,18 +62,17 @@ def execute_query(conn, query, multi_line=False, fetch_rows=True):
     print(f'{count} rows affected.')
 
     if fetch_rows:
-        print(tabulate(cursor.fetchall()))
+        result = cursor.fetchall()
+        print(tabulate(result[:5]))
+        return result
 
     pass
 
 
-def download_pp_data(path):
+def download_pp_data(path='.'):
     """
     Retrieves the csvs containing the the price paid data and stores them under the supplied path.
     """
-    if path is None:
-        path = '.'
-    
     for year in range(1995, 2022):
         for part in range(1, 3):
             filename = f'pp-{year}-part{part}.csv'
@@ -82,56 +81,28 @@ def download_pp_data(path):
     pass
 
 
-def upload_pp_data(conn, path):
-    """
-    Uploads the csvs containing the price paid data to the AWS database.
-    """
-    if path is None:
-        path = '.'
-
-    for year in range(1995, 2022):
-        print(f'Uploading data from year {year}...')
-        for part in range(1, 3):
-            filepath = os.path.join(path, f'pp-{year}-part{part}.csv')
-            query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `pp_data`",
-                     "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '\"'",
-                     "LINES STARTING BY '' TERMINATED BY '\n';")
-            execute_query(conn, query=query, multi_line=True, fetch_rows=False)
-    pass
-
-
-def download_postcode_data(path):
-    if path is None:
-        path = '.'
+def download_postcode_data(path='.'):
     filepath = os.path.join(path, 'open_postcode_geo.csv.zip')
     urllib.request.urlretrieve('https://www.getthedata.com/downloads/open_postcode_geo.csv.zip', filename=filepath)
     os.system(f'unzip {filepath} -d {path}')
     pass
 
 
-def upload_postcode_data(conn, path):
-    if path is None:
-        path = '.'
-
-    filepath = os.path.join(path, 'open_postcode_geo.csv')
-    query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `postcode_data`",
-             "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '\"'",
-             "LINES STARTING BY '' TERMINATED BY '\n';")
-    execute_query(conn, query=query, multi_line=True, fetch_rows=False)
-    pass
-
-
-def upload_pc_data(conn, path):
-    if path is None:
-        path = '.'
-
-    for year in range(1995, 2022):
-        print(f'Populating table with data from {year}...')
-        filepath = os.path.join(path, f'pc-{year}.csv')
-        query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `prices_coordinates_data`",
+def upload_data(conn, table, filepath, clean=False):
+    """
+    :param clean: boolean value denoting whether the specified csv file is *clean*!
+    Uploads the specified csv file to the specified table. Note that the SQL query is not the most efficient version for general well-behaving csv files; 
+    """
+    if clean:
+        query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `{table}`",
                  "FIELDS TERMINATED BY ','",
                  "LINES STARTING BY '' TERMINATED BY '\n';")
-        execute_query(conn, query=query, multi_line=True, fetch_rows=False)
+    else:
+        query = (f"LOAD DATA LOCAL INFILE '{filepath}' INTO TABLE `{table}`",
+                 "FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED by '\"'",
+                 "LINES STARTING BY '' TERMINATED BY '\n';")
+        
+    execute_query(conn, query=query, multi_line=True, fetch_rows=False)
     pass
 
 
@@ -237,23 +208,49 @@ def initialize_table(conn, table):
     pass
 
 
-def retrieve_pois(place_name, latitude, longitude, tags):
-    # 1 degree is around 111 km
-    box_width = 0.015 # roughly 1 mi
-    box_height = 0.015
+def create_index(conn, table, index_name, columns):
+    """
+    Create index with name index_name on the specified table from the specified columns.
+    :param conn:
+    :param table:
+    :param index_name:
+    :param columns: a list of strings
+    """
+    query = (f"CREATE INDEX {index_name}",
+             f"ON `{table}` ({'`' + '`, `'.join(columns) + '`'});")
+    execute_query(conn, query=query, multi_line=True, fetch_rows=False)
+    pass
 
-    north = latitude + box_height/2
-    south = latitude - box_height/2
-    west = longitude - box_width/2
-    east = longitude + box_width/2
 
-    pois = ox.geometries_from_bbox(north, south, east, west, tags)
+def retrieve_pois(place_name, latitude, longitude, tags, dist):
+    """
+    Create GeoDataFrame of OSM features within some distance N, S, E, W of a point.
+    :param center_point: the (lat, lon) center point around which to get the features
+    :param tags: Dict of tags used for finding elements in the selected area. Results returned are the union, not intersection of each individual tag. Each result matches at least one given tag. The dict keys should be OSM tags, (e.g., building, landuse, highway, etc) and the dict values should be either True to retrieve all items with the given tag, or a string to get a single tag-value combination, or a list of strings to get multiple values for the given tag. 
+    :param dist: distance in meters
+    """
+
+    pois = ox.features_from_point((latitude, longitude), tags, dist)
     print(f"There are {len(pois)} points of interest surrounding {place_name} latitude: {latitude}, longitude: {longitude}")
     return pois
     pass
 
 
-def data():
-    """Read the data from the web or local file, returning structured format such as a data frame"""
-    raise NotImplementedError
+def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coordinates-data.csv', local=True):
+    """
+    Read the data from the web or local file, returning structured format as a dataframe
+    :param conn:
+    :param table:
+    :param path: path to the directory containing the data files
+    :param local: a boolean specifying whether the data should be read from a local file
+    """
+    if local:
+        df = pd.read_csv(filepath)
+
+    else:
+        query = f"SELECT * FROM `{table}`;"
+        df = pd.read_sql(query, conn)
+
+    return df
+    pass
 

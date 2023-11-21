@@ -1,3 +1,5 @@
+import numpy as np
+
 from .config import *
 
 from . import access
@@ -11,6 +13,19 @@ import sklearn.decomposition as decomposition
 import sklearn.feature_extraction"""
 
 """Place commands in this file to assess the data you have downloaded. How are missing values encoded, how are outliers encoded? What do columns represent, makes rure they are correctly labeled. How is the data indexed. Crete visualisation routines to assess the data (e.g. in bokeh). Ensure that date formats are correct and correctly timezoned."""
+
+
+def dist(point1, point2, dist):
+    """
+    Returns whether point2 is within some distance N, S, E, W of point1.
+    :param point1: a (lat, lon) tuple
+    :param point2: a (lat, lon) tuple
+    :param dist: distance specified in meters
+    """
+    # convert meters to degrees
+    dist = dist / 1000 / (40075/360)
+    return np.abs(point2[0]-point1[0]) <= dist and np.abs(point2[1]-point1[1]) <= dist
+    pass
 
 
 def data():
