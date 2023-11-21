@@ -3,6 +3,7 @@ import pymysql
 import os
 from tabulate import tabulate
 import pandas as pd
+import osmnx as ox
 
 from .config import *
 
@@ -233,6 +234,22 @@ def initialize_table(conn, table):
 
     for (i, query) in enumerate(queries):
         execute_query(conn, query=query, multi_line=(i>=2), fetch_rows=False)
+    pass
+
+
+def retrieve_pois(place_name, latitude, longitude, tags):
+    # 1 degree is around 111 km
+    box_width = 0.015 # roughly 1 mi
+    box_height = 0.015
+
+    north = latitude + box_height/2
+    south = latitude - box_height/2
+    west = longitude - box_width/2
+    east = longitude + box_width/2
+
+    pois = ox.geometries_from_bbox(north, south, east, west, tags)
+    print(f"There are {len(pois)} points of interest surrounding {place_name} latitude: {latitude}, longitude: {longitude}")
+    return pois
     pass
 
 
