@@ -199,4 +199,11 @@ def predict_price(latitude, longitude, date, property_type):
 
     if r2 < 0.4:
         print('WARNING: low R2 value')
+
+    test = {'latitude': latitude,
+            'longitude': longitude,
+            'date_of_transfer': date,
+            'property_type': property_type}
+    test_feature = build_feature(test, dist=500, timedelta=365)
+    return results.get_prediction(test_feature).summary_frame(alpha=0.05)['mean'][0]
     pass
