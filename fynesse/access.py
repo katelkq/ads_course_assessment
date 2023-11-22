@@ -222,7 +222,7 @@ def create_index(conn, table, index_name, columns):
     pass
 
 
-def retrieve_pois(place_name, latitude, longitude, tags, dist):
+def retrieve_pois(latitude, longitude, tags, dist):
     """
     Create GeoDataFrame of OSM features within some distance N, S, E, W of a point.
     :param center_point: the (lat, lon) center point around which to get the features
@@ -231,12 +231,12 @@ def retrieve_pois(place_name, latitude, longitude, tags, dist):
     """
 
     pois = ox.features_from_point((latitude, longitude), tags, dist)
-    print(f"There are {len(pois)} points of interest surrounding {place_name} latitude: {latitude}, longitude: {longitude}")
+    print(f"There are {len(pois)} points of interest surrounding latitude: {latitude}, longitude: {longitude}")
     return pois
     pass
 
 
-def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coordinates-data.csv', local=True):
+def data(conn=None, table='prices_coordinates_data', where=None, filepath='./data/prices-coordinates-data.csv', local=True):
     """
     Read the data from the web or local file, returning structured format as a dataframe
     :param conn:
@@ -250,7 +250,11 @@ def data(conn=None, table='prices_coordinates_data', filepath='./data/prices-coo
 
     else:
         print('Loading dataframe from SQL server...')
-        query = f"SELECT * FROM `{table}`;"
+        if where:
+            query = f"SELECT * FROM `{table}` {where};"
+        else:
+            query = f"SELECT * FROM `{table}`;"
+        print(f'Query: {query}')
         result = execute_query(conn, query=query)
         df = pd.DataFrame(list(result))
 
