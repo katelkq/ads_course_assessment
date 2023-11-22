@@ -38,7 +38,8 @@ def _initialize():
     """
 
     while True:
-        match input('Is this a local runtime? (Y/n)'):
+        msg = input('Is this a local runtime? (Y/n)')
+        match msg[0]:
             case 'Y':
                 local = True
                 break
