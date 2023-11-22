@@ -39,6 +39,7 @@ def _initialize():
 
     while True:
         msg = input('Is this a local runtime? (Y/n)')
+        print(msg)
         match msg[0]:
             case 'Y':
                 local = True
