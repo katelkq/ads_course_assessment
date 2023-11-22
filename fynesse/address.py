@@ -168,7 +168,7 @@ def predict_price(latitude, longitude, date, property_type):
     date = pd.to_datetime(date)
     
     # specify time range of data to retrieve
-    start, end = min(1995, date.year - 2), max(2021, date.year + 3)
+    start, end = max(1995, date.year - 2), min(2021, date.year + 3)
 
     # load relevant df
     if local:
