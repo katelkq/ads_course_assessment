@@ -46,7 +46,8 @@ def _initialize():
         choice = input('Is this a local runtime? (Y/n)').lower()
         if choice in yes:
             local = True
-            
+            break
+
         elif choice in no:
             local = False
             print('Initializing connection to database...')
@@ -70,10 +71,10 @@ def _initialize():
                                             database="property_prices")
             
             access.initialize_database(conn)
-            
+            break
+
         else:
             print('Invalid response. Try again!')
-            return -1
 
     return 0
     pass
@@ -163,7 +164,7 @@ def predict_price(latitude, longitude, date, property_type):
     print('Initialization successful.')
 
     global df
-    
+
     # converting date to datetime format
     date = pd.to_datetime(date)
     
