@@ -153,6 +153,8 @@ def predict_price(latitude, longitude, date, property_type):
         print('Initialization failed.')
         return
 
+    print('Initialization successful.')
+
     # converting date to datetime format
     date = pd.to_datetime(date)
     
@@ -176,13 +178,16 @@ def predict_price(latitude, longitude, date, property_type):
     dataset = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
 
     train, val = split_dataset(dataset)
+    print('Training and validation sets created.')
 
     prices = np.array(train['price'])
 
     # apply feature builder function to each row
+    print('Creating feature vectors from training set...')
     features = np.array(train.apply(partial(build_feature, dist=500, timedelta=365), axis=1))
     features = sm.add_constant(features)
 
+    print('Performing linear regression...')
     model = sm.OLS(prices, features)
     results = model.fit()
 
@@ -191,6 +196,7 @@ def predict_price(latitude, longitude, date, property_type):
     actual_prices = np.array(val['price'])
 
     # iterate through the validation set, making prediction for each of them
+    print('Creating feature vectors from validation set...')
     pred_features = np.array(val.apply(partial(build_feature, dist=500, timedelta=365), axis=1))
     pred_prices = np.array(results.get_prediction(pred_features).summary_frame(alpha=0.05)['mean'])
 
@@ -205,5 +211,8 @@ def predict_price(latitude, longitude, date, property_type):
             'date_of_transfer': date,
             'property_type': property_type}
     test_feature = build_feature(test, dist=500, timedelta=365)
-    return results.get_prediction(test_feature).summary_frame(alpha=0.05)['mean'][0]
+
+    test_price = results.get_prediction(test_feature).summary_frame(alpha=0.05)['mean'][0]
+    print(f'Predicted price: £{test_price}')
+    return test_price
     pass
