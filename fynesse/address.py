@@ -140,8 +140,7 @@ def build_feature(row, dist, timedelta):
                     {'shop': True}]
     
     for tags in list_of_tags:
-        pois = access.retrieve_pois(place_name=f"{row['town_city']}, {row['county']}", 
-                                    latitude=row['latitude'], 
+        pois = access.retrieve_pois(latitude=row['latitude'], 
                                     longitude=row['longitude'], 
                                     tags=tags, 
                                     dist=dist)
