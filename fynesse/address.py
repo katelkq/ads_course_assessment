@@ -36,41 +36,44 @@ def _initialize():
     """
     Initialize required connections and parameters.
     """
+    yes = {'Y', 'y', 'yes'}
+    no = {'N', 'n', 'no'}
+
+    global local
+    global conn
 
     while True:
-        msg = input('Is this a local runtime? (Y/n)')
-        print(msg)
-        match msg[0]:
-            case 'Y':
-                local = True
-                break
-            case 'n':
-                local = False
-                print('Initializing connection to database...')
+        choice = input('Is this a local runtime? (Y/n)').lower()
+        if choice in yes:
+            local = True
+            
+        elif choice in no:
+            local = False
+            print('Initializing connection to database...')
 
-                database_details = {"url": "database-ads-kl559.cgrre17yxw11.eu-west-2.rds.amazonaws.com",
-                    "port": 3306}
+            database_details = {"url": "database-ads-kl559.cgrre17yxw11.eu-west-2.rds.amazonaws.com",
+                "port": 3306}
 
-                try:
-                    with open("credentials.yaml") as file:
-                        credentials = yaml.safe_load(file)
-                        username = credentials["username"]
-                        password = credentials["password"]
-                        url = database_details["url"]
-                except IOError:
-                    print('File credentials.yaml not found. Please put it in the current directory.')
-                    return -1
-
-                conn = access.create_connection(user=credentials["username"],
-                                                password=credentials["password"],
-                                                host=database_details["url"],
-                                                database="property_prices")
-                
-                access.initialize_database(conn)
-                break
-            case _:
-                print('Invalid response. Try again!')
+            try:
+                with open("credentials.yaml") as file:
+                    credentials = yaml.safe_load(file)
+                    username = credentials["username"]
+                    password = credentials["password"]
+                    url = database_details["url"]
+            except IOError:
+                print('File credentials.yaml not found. Please put it in the current directory.')
                 return -1
+
+            conn = access.create_connection(user=credentials["username"],
+                                            password=credentials["password"],
+                                            host=database_details["url"],
+                                            database="property_prices")
+            
+            access.initialize_database(conn)
+            
+        else:
+            print('Invalid response. Try again!')
+            return -1
 
     return 0
     pass
@@ -102,6 +105,8 @@ def split_dataset(dataset, split=0.8):
 
 
 def retrieve_backing_set(row, dist, timedelta):
+    global df
+
     # retrieve the backing set of the specified row
 
     conditions = []
@@ -157,6 +162,8 @@ def predict_price(latitude, longitude, date, property_type):
 
     print('Initialization successful.')
 
+    global df
+    
     # converting date to datetime format
     date = pd.to_datetime(date)
     
