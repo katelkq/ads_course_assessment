@@ -10,6 +10,8 @@ from functools import partial
 from . import access
 from . import assess
 
+import logging
+
 """# Here are some of the imports we might expect 
 import sklearn.model_selection  as ms
 import sklearn.linear_model as lm
@@ -43,7 +45,9 @@ def _initialize():
     global conn
 
     while True:
-        choice = input('Is this a local runtime? (Y/n)').lower()
+        # choice = input('Do you have the ./data directory? (Y/n) ').lower()
+        choice = 'Y'
+
         if choice in yes:
             local = True
             break
@@ -131,9 +135,9 @@ def retrieve_backing_set(row, dist, timedelta):
 def build_feature(row, dist, timedelta):
     backing_set = retrieve_backing_set(row, dist, timedelta)
 
+    # toggle
     feature = [np.mean(backing_set['price']),
-                np.max(backing_set['price']),
-                np.min(backing_set['price'])]
+                np.var(backing_set['price'])]
     
     list_of_tags = [{'amenity': True},
                     {'leisure': True},
@@ -149,11 +153,17 @@ def build_feature(row, dist, timedelta):
     return feature
     pass
 
+
 def predict_price(latitude, longitude, date, property_type):
     """
     Price prediction for UK housing.
     """
 
+    test = {'latitude': latitude,
+            'longitude': longitude,
+            'date_of_transfer': date,
+            'property_type': property_type}
+    
     result = _initialize()
 
     if result != 0:
@@ -163,7 +173,7 @@ def predict_price(latitude, longitude, date, property_type):
     print('Initialization successful.')
 
     global df
-
+    
     # converting date to datetime format
     date = pd.to_datetime(date)
     
@@ -188,12 +198,14 @@ def predict_price(latitude, longitude, date, property_type):
 
     train, val = split_dataset(dataset)
     print('Training and validation sets created.')
+    print(f'Size of training set: {len(train)}')
+    print(f'Size of validation set: {len(val)}')
 
     prices = np.array(train['price'])
 
     # apply feature builder function to each row
     print('Creating feature vectors from training set...')
-    features = np.array(train.apply(partial(build_feature, dist=500, timedelta=365), axis=1))
+    features = np.array(train.apply(partial(build_feature, dist=500, timedelta=365), axis=1).values.tolist())
     features = sm.add_constant(features)
 
     print('Performing linear regression...')
@@ -201,27 +213,29 @@ def predict_price(latitude, longitude, date, property_type):
     results = model.fit()
 
     print(results.summary())
+    logging.info(results.summary())
 
     actual_prices = np.array(val['price'])
 
     # iterate through the validation set, making prediction for each of them
     print('Creating feature vectors from validation set...')
-    pred_features = np.array(val.apply(partial(build_feature, dist=500, timedelta=365), axis=1))
+    pred_features = np.array(val.apply(partial(build_feature, dist=500, timedelta=365), axis=1).values.tolist())
+    pred_features = sm.add_constant(pred_features)
+
     pred_prices = np.array(results.get_prediction(pred_features).summary_frame(alpha=0.05)['mean'])
 
     r2 = r2_score(actual_prices, pred_prices)
     print(f'R2 = {r2}')
+    logging.info(f'R2 = {r2}')
 
-    if r2 < 0.4:
+    if r2 < 0.3:
         print('WARNING: low R2 value')
 
-    test = {'latitude': latitude,
-            'longitude': longitude,
-            'date_of_transfer': date,
-            'property_type': property_type}
-    test_feature = build_feature(test, dist=500, timedelta=365)
+    test_features = np.array([build_feature(test, dist=500, timedelta=365)])
+    test_features = np.insert(test_features, obj=0, values=[1])
 
-    test_price = results.get_prediction(test_feature).summary_frame(alpha=0.05)['mean'][0]
+    test_price = results.get_prediction(test_features).summary_frame(alpha=0.05)['mean'][0]
     print(f'Predicted price: £{test_price}')
+    logging.info(f'Predicted price: £{test_price}')
     return test_price
     pass

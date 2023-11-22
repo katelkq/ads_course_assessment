@@ -222,7 +222,7 @@ def create_index(conn, table, index_name, columns):
     pass
 
 
-def retrieve_pois(latitude, longitude, tags, dist):
+def retrieve_pois(latitude, longitude, tags, dist, output=False):
     """
     Create GeoDataFrame of OSM features within some distance N, S, E, W of a point.
     :param center_point: the (lat, lon) center point around which to get the features
@@ -230,8 +230,13 @@ def retrieve_pois(latitude, longitude, tags, dist):
     :param dist: distance in meters
     """
 
-    pois = ox.features_from_point((latitude, longitude), tags, dist)
-    print(f"There are {len(pois)} points of interest surrounding latitude: {latitude}, longitude: {longitude}")
+    try:
+        pois = ox.features_from_point((latitude, longitude), tags, dist)
+    except:
+        return []
+
+    if output:
+        print(f"There are {len(pois)} points of interest surrounding latitude: {latitude}, longitude: {longitude}")
     return pois
     pass
 
