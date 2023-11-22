@@ -70,6 +70,7 @@ def _initialize():
                 print('Invalid response. Try again!')
                 return -1
 
+    return 0
     pass
 
 
