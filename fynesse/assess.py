@@ -51,11 +51,18 @@ def plot_distribution(ax, data, bins=50):
     Graphs the distribution of the data, which is assumed to be one-dimensional.
     """
 
+    mean = np.mean(data)
+    var = np.var(data)
+
     ax.hist(data, bins=bins)
-    ax.axvline(np.mean(data), color='y', linestyle='dashed')
-    ax.axvline(np.quantile(data, .25), color='y', linestyle='dashed', alpha=0.5)
-    ax.axvline(np.quantile(data, .50), color='y', linestyle='dashed', alpha=0.75)
-    ax.axvline(np.quantile(data, .75), color='y', linestyle='dashed', alpha=0.5)
+    ax.axvline(mean, color='orange', linestyle='dashed')
+    ax.axvline(np.quantile(data, .25), color='orange', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.quantile(data, .50), color='orange', linestyle='dashed', alpha=0.75)
+    ax.axvline(np.quantile(data, .75), color='orange', linestyle='dashed', alpha=0.5)
+
+    ax.set_title(f'mean = {mean:.3f}, variance = {var:.3f}')
+
+    return mean, var
 
     pass
 
@@ -74,9 +81,10 @@ def plot_correlation(ax, target, feature, regression=False):
         slope = results.params[1]
         r2 = results.rsquared
 
-        plot_line(ax, slope, intercept, np.min(feature), np.max(feature), color='y')
+        plot_line(ax, slope, intercept, np.min(feature), np.max(feature), color='orange')
         ax.set_title(f'R2 = {r2:.3f}')
 
+        return r2, (slope, intercept)
 
     pass
 
