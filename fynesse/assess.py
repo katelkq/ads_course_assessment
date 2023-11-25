@@ -39,21 +39,28 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
     pass
 
 
-def graph_distribution(ax, data, bins=50):
+def plot_line(ax, slope, intercept, start, stop, color):
+    x = np.array([start, stop])
+    y = slope * x + intercept
+    ax.plot(x, y, color=color)
+    pass
+
+
+def plot_distribution(ax, data, bins=50):
     """
     Graphs the distribution of the data, which is assumed to be one-dimensional.
     """
 
     ax.hist(data, bins=bins)
-    ax.axvline(np.mean(data), color='m', linestyle='dashed')
-    ax.axvline(np.quantile(data, .25), color='m', linestyle='dashed', alpha=0.5)
-    ax.axvline(np.quantile(data, .50), color='m', linestyle='dashed', alpha=0.5)
-    ax.axvline(np.quantile(data, .75), color='m', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.mean(data), color='y', linestyle='dashed')
+    ax.axvline(np.quantile(data, .25), color='y', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.quantile(data, .50), color='y', linestyle='dashed', alpha=0.75)
+    ax.axvline(np.quantile(data, .75), color='y', linestyle='dashed', alpha=0.5)
 
     pass
 
 
-def graph_correlation(ax, target, feature, regression=False):
+def plot_correlation(ax, target, feature, regression=False):
 
     ax.scatter(feature, target)
 
@@ -63,10 +70,12 @@ def graph_correlation(ax, target, feature, regression=False):
         model = sm.OLS(target, feature)
         results = model.fit()
 
-        print(results.params)
+        intercept = results.params[0]
+        slope = results.params[1]
         r2 = results.rsquared
 
-        ax.set_title(f'R2 = {r2}')
+        plot_line(ax, slope, intercept, np.min(feature), np.max(feature), color='y')
+        ax.set_title(f'R2 = {r2:.3f}')
 
 
     pass
