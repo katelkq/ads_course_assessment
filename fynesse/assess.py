@@ -38,6 +38,45 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
     return df
     pass
 
+def sample_from(df, n):
+    """
+    Returns a list of indices.
+    """
+    indices = np.arange(len(df))
+    samples = np.random.choice(indices, size=n, replace=False)
+    return samples
+    pass
+
+def datetime_to_number(column):
+    """
+    Transform a column of datetime type to number type.
+    """
+    return (column - column.min()) / np.timedelta64(1,'D')
+    pass
+
+def bbox(point1, point2, dist):
+    """
+    Returns whether point2 is within some distance N, S, E, W of point1.
+    :param point1: a (lat, lon) tuple
+    :param point2: a (lat, lon) tuple
+    :param dist: distance specified in meters
+    """
+    # convert meters to degrees
+    dist = dist / 1000 / (40075/360)
+    return (np.abs(point2[0]-point1[0]) <= dist) & (np.abs(point2[1]-point1[1]) <= dist)
+    pass
+
+
+def recent(date1, date2, timedelta):
+    """
+    Returns whether date2 is within some timedelta away from date1.
+    :param date1: a datetime value
+    :param date2: a datetime value
+    :param timedelta: specified in days
+    """
+    return (date2-date1).apply(lambda x: np.abs(x.days)) <= timedelta
+    pass
+
 
 def plot_line(ax, slope, intercept, start, stop, color):
     x = np.array([start, stop])

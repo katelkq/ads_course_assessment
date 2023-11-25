@@ -83,17 +83,7 @@ def _initialize():
     pass
 
 
-def bbox(point1, point2, dist):
-    """
-    Returns whether point2 is within some distance N, S, E, W of point1.
-    :param point1: a (lat, lon) tuple
-    :param point2: a (lat, lon) tuple
-    :param dist: distance specified in meters
-    """
-    # convert meters to degrees
-    dist = dist / 1000 / (40075/360)
-    return (np.abs(point2[0]-point1[0]) <= dist) & (np.abs(point2[1]-point1[1]) <= dist)
-    pass
+
 
 
 def split_dataset(dataset, split=0.8):
@@ -114,7 +104,7 @@ def retrieve_backing_set(row, dist, timedelta):
     # retrieve the backing set of the specified row
 
     conditions = []
-    conditions.append(bbox((row['latitude'], row['longitude']), (df['latitude'], df['longitude']), dist))
+    conditions.append(assess.bbox((row['latitude'], row['longitude']), (df['latitude'], df['longitude']), dist))
     conditions.append((df['date_of_transfer'] - row['date_of_transfer']).apply(lambda x: np.abs(x.days)) <= timedelta)
     conditions.append(df['property_type'] == row['property_type'])
     
@@ -197,7 +187,7 @@ def predict_price_split(latitude, longitude, date, property_type):
         df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
 
     # filter df based on location and property type
-    df = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
+    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
     df = df.loc[df['property_type'] == property_type]
 
     # create dataset based on time and location
@@ -205,11 +195,11 @@ def predict_price_split(latitude, longitude, date, property_type):
 
     # TODO: iteratively widen range if not enough data points?
     dist = 500
-    dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
     
     while (len(dataset) < 10): # kind of an arbitrary cutoff point
         dist += 500
-        dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+        dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
     
     train, val = split_dataset(dataset)
     print('Training and validation sets created.')
@@ -295,7 +285,7 @@ def predict_price(latitude, longitude, date, property_type):
         df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
 
     # filter df based on location and property type
-    df = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
+    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
     df = df.loc[df['property_type'] == property_type]
 
     # create dataset based on time and location
@@ -303,11 +293,11 @@ def predict_price(latitude, longitude, date, property_type):
 
     # TODO: iteratively widen range if not enough data points?
     dist = 500
-    dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
     
     while (len(dataset) < 20): # kind of an arbitrary cutoff point
         dist += 500
-        dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+        dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
 
     prices = np.array(dataset['price'])
 
