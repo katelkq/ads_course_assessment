@@ -51,7 +51,10 @@ def datetime_to_number(column):
     """
     Transform a column of datetime type to number type.
     """
-    return (column - column.min()) / np.timedelta64(1,'D')
+    try:
+        return (column - column.min()) / np.timedelta64(1,'D')
+    except:
+        return column / np.timedelta64(1,'D')
     pass
 
 def bbox(point1, point2, dist):
