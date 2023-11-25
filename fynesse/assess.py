@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+from sklearn.metrics import r2_score
 
 from .config import *
 
@@ -36,6 +38,38 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
     return df
     pass
 
+
+def graph_distribution(ax, data, bins=50):
+    """
+    Graphs the distribution of the data, which is assumed to be one-dimensional.
+    """
+
+    ax.hist(data, bins=bins)
+    ax.axvline(np.mean(data), color='m', linestyle='dashed')
+    ax.axvline(np.quantile(data, .25), color='m', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.quantile(data, .50), color='m', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.quantile(data, .75), color='m', linestyle='dashed', alpha=0.5)
+
+    pass
+
+
+def graph_correlation(ax, target, feature, regression=False):
+
+    ax.scatter(feature, target)
+
+    if regression:
+        feature = np.reshape(feature, (-1, 1))
+        feature = sm.add_constant(feature)
+        model = sm.OLS(target, feature)
+        results = model.fit()
+
+        print(results.params)
+        r2 = results.rsquared
+
+        ax.set_title(f'R2 = {r2}')
+
+
+    pass
 
 def query(data):
     """Request user input for some aspect of the data."""

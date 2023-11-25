@@ -33,7 +33,6 @@ conn = None
 df = None
 local = None
 
-
 def _initialize():
     """
     Initialize required connections and parameters.
@@ -137,33 +136,40 @@ def build_feature(row, dist, timedelta):
 
     # toggle
     feature = [np.mean(backing_set['price']),
-                np.var(backing_set['price'])]
+               np.max(backing_set['price']),
+               np.min(backing_set['price'])]
     
-    list_of_tags = [{'amenity': True},
-                    {'leisure': True},
-                    {'shop': True}]
+    tags = {'amenity': True,
+            'leisure': True,
+            'shop': True}
     
-    for tags in list_of_tags:
-        pois = access.retrieve_pois(latitude=row['latitude'], 
-                                    longitude=row['longitude'], 
-                                    tags=tags, 
-                                    dist=dist)
-        feature.append(len(pois))
+    pois = access.retrieve_pois(latitude=row['latitude'], 
+                                longitude=row['longitude'], 
+                                tags=tags, 
+                                dist=dist)
+    
+    if pois is None:
+        feature.append(0)
+        feature.append(0)
+        feature.append(0)
+        return feature
+
+    for key in tags.keys():
+        if key in pois.columns:
+            feature.append(len(pois[key].dropna()))
+        else:
+            feature.append(0)
 
     return feature
     pass
 
 
-def predict_price(latitude, longitude, date, property_type):
+def predict_price_split(latitude, longitude, date, property_type):
     """
     Price prediction for UK housing.
     """
 
-    test = {'latitude': latitude,
-            'longitude': longitude,
-            'date_of_transfer': date,
-            'property_type': property_type}
-    
+    # initialization
     result = _initialize()
 
     if result != 0:
@@ -172,13 +178,13 @@ def predict_price(latitude, longitude, date, property_type):
 
     print('Initialization successful.')
 
-    global df
-    
     # converting date to datetime format
     date = pd.to_datetime(date)
     
     # specify time range of data to retrieve
     start, end = max(1995, date.year - 2), min(2021, date.year + 3)
+
+    global df
 
     # load relevant df
     if local:
@@ -190,12 +196,21 @@ def predict_price(latitude, longitude, date, property_type):
     else:
         df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
 
-    # filter df based on property type
+    # filter df based on location and property type
+    df = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
     df = df.loc[df['property_type'] == property_type]
 
-    # filter again based on location
-    dataset = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
+    # create dataset based on time and location
+    dataset_recent = df.loc[(df['date_of_transfer'] - date).apply(lambda x: np.abs(x.days)) <= 365]
 
+    # TODO: iteratively widen range if not enough data points?
+    dist = 500
+    dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    
+    while (len(dataset) < 10): # kind of an arbitrary cutoff point
+        dist += 500
+        dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    
     train, val = split_dataset(dataset)
     print('Training and validation sets created.')
     print(f'Size of training set: {len(train)}')
@@ -205,8 +220,7 @@ def predict_price(latitude, longitude, date, property_type):
 
     # apply feature builder function to each row
     print('Creating feature vectors from training set...')
-    features = np.array(train.apply(partial(build_feature, dist=500, timedelta=365), axis=1).values.tolist())
-    features = sm.add_constant(features)
+    features = np.array(train.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
 
     print('Performing linear regression...')
     model = sm.OLS(prices, features)
@@ -215,27 +229,111 @@ def predict_price(latitude, longitude, date, property_type):
     print(results.summary())
     logging.info(results.summary())
 
+    preds = np.array(results.get_prediction(features).summary_frame(alpha=0.05)['mean'])
+    r2 = r2_score(prices, preds)
+    print(f'Training set: R2 = {r2}')
+    logging.info(f'Training set: R2 = {r2}')
+
     actual_prices = np.array(val['price'])
 
     # iterate through the validation set, making prediction for each of them
     print('Creating feature vectors from validation set...')
-    pred_features = np.array(val.apply(partial(build_feature, dist=500, timedelta=365), axis=1).values.tolist())
-    pred_features = sm.add_constant(pred_features)
+    pred_features = np.array(val.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
 
     pred_prices = np.array(results.get_prediction(pred_features).summary_frame(alpha=0.05)['mean'])
 
     r2 = r2_score(actual_prices, pred_prices)
-    print(f'R2 = {r2}')
-    logging.info(f'R2 = {r2}')
+    print(f'Validation set: R2 = {r2}')
+    logging.info(f'Validation set: R2 = {r2}')
 
     if r2 < 0.3:
-        print('WARNING: low R2 value')
+        print('WARNING: low R2 value on validation set')
+        logging.info('WARNING: low R2 value on validation set')
 
+    test = {'latitude': latitude,
+        'longitude': longitude,
+        'date_of_transfer': date,
+        'property_type': property_type}
+    
     test_features = np.array([build_feature(test, dist=500, timedelta=365)])
-    test_features = np.insert(test_features, obj=0, values=[1])
 
     test_price = results.get_prediction(test_features).summary_frame(alpha=0.05)['mean'][0]
-    print(f'Predicted price: £{test_price}')
-    logging.info(f'Predicted price: £{test_price}')
+    return test_price
+    pass
+
+
+def predict_price(latitude, longitude, date, property_type):
+    """
+    Price prediction for UK housing.
+    """
+
+    # initialization
+    result = _initialize()
+
+    if result != 0:
+        print('Initialization failed.')
+        return
+
+    print('Initialization successful.')
+
+    # converting date to datetime format
+    date = pd.to_datetime(date)
+    
+    # specify time range of data to retrieve
+    start, end = max(1995, date.year - 2), min(2021, date.year + 3)
+
+    global df
+
+    # load relevant df
+    if local:
+        df_by_year = []
+        for year in range(start, end):
+            filepath = f'./data/pc-{year}.csv'
+            df_by_year.append(assess.data(filepath=filepath))
+        df = pd.concat(df_by_year, axis=0)
+    else:
+        df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
+
+    # filter df based on location and property type
+    df = df.loc[bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
+    df = df.loc[df['property_type'] == property_type]
+
+    # create dataset based on time and location
+    dataset_recent = df.loc[(df['date_of_transfer'] - date).apply(lambda x: np.abs(x.days)) <= 365]
+
+    # TODO: iteratively widen range if not enough data points?
+    dist = 500
+    dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    
+    while (len(dataset) < 20): # kind of an arbitrary cutoff point
+        dist += 500
+        dataset = dataset_recent.loc[bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+
+    prices = np.array(dataset['price'])
+
+    # apply feature builder function to each row
+    print('Creating feature vectors from training set...')
+    features = np.array(dataset.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
+
+    print('Performing linear regression...')
+    model = sm.OLS(prices, features)
+    results = model.fit()
+
+    print(results.summary())
+    logging.info(results.summary())
+
+    preds = np.array(results.get_prediction(features).summary_frame(alpha=0.05)['mean'])
+    r2 = r2_score(prices, preds)
+    print(f'Training set: R2 = {r2}')
+    logging.info(f'Training set: R2 = {r2}')
+
+    test = {'latitude': latitude,
+        'longitude': longitude,
+        'date_of_transfer': date,
+        'property_type': property_type}
+    
+    test_features = np.array([build_feature(test, dist=500, timedelta=365)])
+
+    test_price = results.get_prediction(test_features).summary_frame(alpha=0.05)['mean'][0]
     return test_price
     pass

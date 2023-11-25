@@ -233,7 +233,7 @@ def retrieve_pois(latitude, longitude, tags, dist, output=False):
     try:
         pois = ox.features_from_point((latitude, longitude), tags, dist)
     except:
-        return []
+        return None
 
     if output:
         print(f"There are {len(pois)} points of interest surrounding latitude: {latitude}, longitude: {longitude}")
