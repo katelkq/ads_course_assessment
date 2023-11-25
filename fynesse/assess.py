@@ -80,7 +80,10 @@ def recent(date1, date2, timedelta):
 
 def plot_line(ax, slope, intercept, start, stop, color):
     x = np.array([start, stop])
-    y = slope * x + intercept
+    try:
+        y = slope * x + intercept
+    except:
+        y = slope * datetime_to_number(x) + intercept
     ax.plot(x, y, color=color)
     pass
 
@@ -112,17 +115,17 @@ def plot_correlation(ax, target, feature, regression=False):
 
     if regression:
         try:
-            feature = np.reshape(feature, (-1, 1))
-            feature = sm.add_constant(feature)
+            basis = np.reshape(feature, (-1, 1))
+            basis = sm.add_constant(basis)
         except: # probably a datetime type, need to cast to numeric
-            feature = np.reshape(datetime_to_number(feature), (-1, 1))
-            feature = sm.add_constant(feature)
+            basis = np.reshape(datetime_to_number(feature), (-1, 1))
+            basis = sm.add_constant(basis)
 
-        model = sm.OLS(target, feature)
+        model = sm.OLS(target, basis)
         results = model.fit()
 
-        intercept = results.params[0]
-        slope = results.params[1]
+        intercept = results.params['const']
+        slope = results.params['x1']
         r2 = results.rsquared
 
         plot_line(ax, slope, intercept, np.min(feature), np.max(feature), color='orange')
