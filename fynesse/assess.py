@@ -111,8 +111,13 @@ def plot_correlation(ax, target, feature, regression=False):
     ax.scatter(feature, target)
 
     if regression:
-        feature = np.reshape(feature, (-1, 1))
-        feature = sm.add_constant(feature)
+        try:
+            feature = np.reshape(feature, (-1, 1))
+            feature = sm.add_constant(feature)
+        except: # probably a datetime type, need to cast to numeric
+            feature = np.reshape(datetime_to_number(feature), (-1, 1))
+            feature = sm.add_constant(feature)
+
         model = sm.OLS(target, feature)
         results = model.fit()
 
