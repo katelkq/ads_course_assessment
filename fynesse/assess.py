@@ -78,12 +78,12 @@ def recent(date1, date2, timedelta):
     pass
 
 
-def plot_line(ax, slope, intercept, start, stop, color):
-    x = np.array([start, stop])
+def plot_line(ax, slope, intercept, x, color):
     try:
         y = slope * x + intercept
     except:
         y = slope * datetime_to_number(x) + intercept
+
     ax.plot(x, y, color=color)
     pass
 
@@ -128,7 +128,7 @@ def plot_correlation(ax, target, feature, regression=False):
         slope = results.params['x1']
         r2 = results.rsquared
 
-        plot_line(ax, slope, intercept, np.min(feature), np.max(feature), color='orange')
+        plot_line(ax, slope, intercept, feature, color='orange')
         ax.set_title(f'R2 = {r2:.3f}')
 
         return r2, (slope, intercept)
