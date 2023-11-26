@@ -98,9 +98,9 @@ def plot_distribution(ax, data, bins=50):
 
     ax.hist(data, bins=bins)
     ax.axvline(mean, color='orange', linestyle='dashed')
-    ax.axvline(np.quantile(data, .25), color='pink', linestyle='dashed', alpha=0.5)
-    ax.axvline(np.quantile(data, .50), color='pink', linestyle='dashed', alpha=0.75)
-    ax.axvline(np.quantile(data, .75), color='pink', linestyle='dashed', alpha=0.5)
+    ax.axvline(np.quantile(data, .25), color='pink', linestyle='dashed', alpha=0.75)
+    ax.axvline(np.quantile(data, .50), color='pink', linestyle='dashed')
+    ax.axvline(np.quantile(data, .75), color='pink', linestyle='dashed', alpha=0.75)
 
     ax.set_title(f'mean = {mean:.3f}, variance = {var:.3f}')
 
@@ -109,9 +109,9 @@ def plot_distribution(ax, data, bins=50):
     pass
 
 
-def plot_correlation(ax, target, feature, regression=False):
+def plot_correlation(ax, target, feature, label=None, regression=False):
 
-    ax.scatter(feature, target)
+    ax.scatter(feature, target, label=label)
 
     if regression:
         try:

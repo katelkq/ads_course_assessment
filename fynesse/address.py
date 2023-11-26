@@ -35,7 +35,7 @@ local = None
 
 def _initialize():
     """
-    Initialize required connections and parameters.
+    Initialize database instance.
     """
     yes = {'Y', 'y', 'yes'}
     no = {'N', 'n', 'no'}
@@ -83,9 +83,6 @@ def _initialize():
     pass
 
 
-
-
-
 def split_dataset(dataset, split=0.8):
     indices = np.arange(len(dataset))
     np.random.shuffle(indices)
@@ -98,18 +95,15 @@ def split_dataset(dataset, split=0.8):
     pass
 
 
-def retrieve_backing_set(row, dist, timedelta):
-    global df
-
-    # retrieve the backing set of the specified row
+def retrieve_backing_set(df, row, dist, timedelta):
+    """
+    Retrieves the backing set of the specified row.
+    """
 
     conditions = []
     conditions.append(assess.bbox((row['latitude'], row['longitude']), (df['latitude'], df['longitude']), dist))
-    conditions.append((df['date_of_transfer'] - row['date_of_transfer']).apply(lambda x: np.abs(x.days)) <= timedelta)
-    conditions.append(df['property_type'] == row['property_type'])
-    
-    # conditions.append(df['new_build_flag'] == row['new_build_flag'])
-    # conditions.append(df['tenure_type'] == row['tenure_type'])
+    conditions.append(assess.recent(row['date_of_transfer'], df['date_of_transfer'], timedelta))
+    conditions.append(row['property_type'] == df['property_type'])
 
     filter = np.ones(shape=len(df), dtype=bool)
     
@@ -117,38 +111,39 @@ def retrieve_backing_set(row, dist, timedelta):
         filter = filter & condition
 
     return df.loc[filter]
-
     pass
 
 
-def build_feature(row, dist, timedelta):
-    backing_set = retrieve_backing_set(row, dist, timedelta)
+def build_feature(df, row):
+    backing_set = retrieve_backing_set(df, row, dist=500, timedelta=180)
 
-    # toggle
-    feature = [np.mean(backing_set['price']),
+    # timeseries and backing set features
+    feature = [row['date_numeric'],
+               np.mean(backing_set['price']),
                np.max(backing_set['price']),
                np.min(backing_set['price'])]
     
-    tags = {'amenity': True,
-            'leisure': True,
-            'shop': True}
+    # osmnx features
+    tags = {"amenity": True,
+            "healthcare": True,
+            "leisure": True,
+            "shop": True}
     
     pois = access.retrieve_pois(latitude=row['latitude'], 
                                 longitude=row['longitude'], 
                                 tags=tags, 
-                                dist=dist)
+                                dist=10000)
     
     if pois is None:
-        feature.append(0)
-        feature.append(0)
-        feature.append(0)
-        return feature
-
-    for key in tags.keys():
-        if key in pois.columns:
-            feature.append(len(pois[key].dropna()))
-        else:
+        for _ in range(5):
             feature.append(0)
+    else:
+        feature.append(len(pois))
+        for key in tags.keys():
+            if key in pois.columns:
+                feature.append(len(pois[key].dropna()))
+            else:
+                feature.append(0)
 
     return feature
     pass
@@ -156,7 +151,7 @@ def build_feature(row, dist, timedelta):
 
 def predict_price_split(latitude, longitude, date, property_type):
     """
-    Price prediction for UK housing.
+    Price prediction for UK housing. Kinda deprecated at the moment?
     """
 
     # initialization
@@ -252,58 +247,44 @@ def predict_price_split(latitude, longitude, date, property_type):
     pass
 
 
-def predict_price(latitude, longitude, date, property_type):
+def predict_price(latitude, longitude, date, property_type, local=True, filepath='./data/prices-coordinates-data.csv', conn=None):
     """
     Price prediction for UK housing.
     """
 
-    # initialization
-    result = _initialize()
-
-    if result != 0:
-        print('Initialization failed.')
-        return
-
-    print('Initialization successful.')
-
-    # converting date to datetime format
+    # converting input date to datetime format
     date = pd.to_datetime(date)
-    
-    # specify time range of data to retrieve
-    start, end = max(1995, date.year - 2), min(2021, date.year + 3)
 
-    global df
-
-    # load relevant df
     if local:
-        df_by_year = []
-        for year in range(start, end):
-            filepath = f'./data/pc-{year}.csv'
-            df_by_year.append(assess.data(filepath=filepath))
-        df = pd.concat(df_by_year, axis=0)
+        df = assess.data(filepath=filepath)
     else:
-        df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
+        df = assess.data(local=False, conn=conn)
 
     # filter df based on location and property type
-    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
-    df = df.loc[df['property_type'] == property_type]
+    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
+    df = df.loc[property_type == df['property_type']]
 
-    # create dataset based on time and location
-    dataset_recent = df.loc[(df['date_of_transfer'] - date).apply(lambda x: np.abs(x.days)) <= 365]
+    # sort date column
+    df = df.sort_values(by='date_of_transfer')
 
-    # TODO: iteratively widen range if not enough data points?
-    dist = 500
-    dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
-    
-    while (len(dataset) < 20): # kind of an arbitrary cutoff point
-        dist += 500
-        dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
+    # create numeric date column
+    df['date_numeric'] = assess.datetime_to_number(df['date_of_transfer'])
+
+    # sample from entire dataset to build the training set - should this depend on the size of the dataset?
+    if len(df) < 100:
+        dataset = df
+    else:
+        indices = np.arange(0, len(df), step=len(df)//100)
+        dataset = df.iloc[indices]
+
+    print(f'Size of the training set: {len(dataset)}')
+    logging.info(f'Size of the training set: {len(dataset)}')
 
     prices = np.array(dataset['price'])
 
     # apply feature builder function to each row
     print('Creating feature vectors from training set...')
-    features = np.array(dataset.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
+    features = np.array(dataset.apply(partial(build_feature, df), axis=1).values.tolist())
 
     print('Performing linear regression...')
     model = sm.OLS(prices, features)
@@ -318,12 +299,13 @@ def predict_price(latitude, longitude, date, property_type):
     logging.info(f'Training set: R2 = {r2}')
 
     test = {'latitude': latitude,
-        'longitude': longitude,
-        'date_of_transfer': date,
-        'property_type': property_type}
+            'longitude': longitude,
+            'date_of_transfer': date,
+            'property_type': property_type,
+            'date_numeric': assess.datetime_to_number(date)}
     
-    test_features = np.array([build_feature(test, dist=500, timedelta=365)])
+    features_test = np.array([build_feature(df, test)])
 
-    test_price = results.get_prediction(test_features).summary_frame(alpha=0.05)['mean'][0]
-    return test_price
+    preds_test = results.get_prediction(features_test).summary_frame(alpha=0.05)['mean'][0]
+    return preds_test
     pass
