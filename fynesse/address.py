@@ -28,60 +28,6 @@ import scipy.stats"""
 
 """Address a particular question that arises from the data"""
 
-# parameters
-conn = None
-df = None
-local = None
-
-def _initialize():
-    """
-    Initialize database instance.
-    """
-    yes = {'Y', 'y', 'yes'}
-    no = {'N', 'n', 'no'}
-
-    global local
-    global conn
-
-    while True:
-        # choice = input('Do you have the ./data directory? (Y/n) ').lower()
-        choice = 'Y'
-
-        if choice in yes:
-            local = True
-            break
-
-        elif choice in no:
-            local = False
-            print('Initializing connection to database...')
-
-            database_details = {"url": "database-ads-kl559.cgrre17yxw11.eu-west-2.rds.amazonaws.com",
-                "port": 3306}
-
-            try:
-                with open("credentials.yaml") as file:
-                    credentials = yaml.safe_load(file)
-                    username = credentials["username"]
-                    password = credentials["password"]
-                    url = database_details["url"]
-            except IOError:
-                print('File credentials.yaml not found. Please put it in the current directory.')
-                return -1
-
-            conn = access.create_connection(user=credentials["username"],
-                                            password=credentials["password"],
-                                            host=database_details["url"],
-                                            database="property_prices")
-            
-            access.initialize_database(conn)
-            break
-
-        else:
-            print('Invalid response. Try again!')
-
-    return 0
-    pass
-
 
 def split_dataset(dataset, split=0.8):
     indices = np.arange(len(dataset))
@@ -99,18 +45,11 @@ def retrieve_backing_set(df, row, dist, timedelta):
     """
     Retrieves the backing set of the specified row.
     """
+    dataset = df.loc[assess.bbox((row['latitude'], row['longitude']), (df['latitude'], df['longitude']), dist)]
+    dataset = dataset.loc[assess.recent(row['date_of_transfer'], dataset['date_of_transfer'], timedelta)]
+    dataset = dataset.loc[row['property_type'] == dataset['property_type']]
 
-    conditions = []
-    conditions.append(assess.bbox((row['latitude'], row['longitude']), (df['latitude'], df['longitude']), dist))
-    conditions.append(assess.recent(row['date_of_transfer'], df['date_of_transfer'], timedelta))
-    conditions.append(row['property_type'] == df['property_type'])
-
-    filter = np.ones(shape=len(df), dtype=bool)
-    
-    for condition in conditions:
-        filter = filter & condition
-
-    return df.loc[filter]
+    return dataset
     pass
 
 
@@ -124,6 +63,7 @@ def build_feature(df, row):
                np.min(backing_set['price'])]
     
     # osmnx features
+    """
     tags = {"amenity": True,
             "healthcare": True,
             "leisure": True,
@@ -144,106 +84,21 @@ def build_feature(df, row):
                 feature.append(len(pois[key].dropna()))
             else:
                 feature.append(0)
-
-    return feature
-    pass
-
-
-def predict_price_split(latitude, longitude, date, property_type):
-    """
-    Price prediction for UK housing. Kinda deprecated at the moment?
     """
 
-    # initialization
-    result = _initialize()
-
-    if result != 0:
-        print('Initialization failed.')
-        return
-
-    print('Initialization successful.')
-
-    # converting date to datetime format
-    date = pd.to_datetime(date)
+    tags = {"amenity": True}
     
-    # specify time range of data to retrieve
-    start, end = max(1995, date.year - 2), min(2021, date.year + 3)
-
-    global df
-
-    # load relevant df
-    if local:
-        df_by_year = []
-        for year in range(start, end):
-            filepath = f'./data/pc-{year}.csv'
-            df_by_year.append(assess.data(filepath=filepath))
-        df = pd.concat(df_by_year, axis=0)
+    pois = access.retrieve_pois(latitude=row['latitude'], 
+                                longitude=row['longitude'], 
+                                tags=tags, 
+                                dist=10000)
+    
+    if pois is None:
+        feature.append(0)
     else:
-        df = assess.data(conn=conn, where=f"WHERE `date_of_transfer` >= '{start}-01-01' AND `date_of_transfer` <= '{end}-12-31'", local=False)
-
-    # filter df based on location and property type
-    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 5000)]
-    df = df.loc[df['property_type'] == property_type]
-
-    # create dataset based on time and location
-    dataset_recent = df.loc[(df['date_of_transfer'] - date).apply(lambda x: np.abs(x.days)) <= 365]
-
-    # TODO: iteratively widen range if not enough data points?
-    dist = 500
-    dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
-    
-    while (len(dataset) < 10): # kind of an arbitrary cutoff point
-        dist += 500
-        dataset = dataset_recent.loc[assess.bbox((latitude, longitude), (dataset_recent['latitude'], dataset_recent['longitude']), dist)]
-    
-    train, val = split_dataset(dataset)
-    print('Training and validation sets created.')
-    print(f'Size of training set: {len(train)}')
-    print(f'Size of validation set: {len(val)}')
-
-    prices = np.array(train['price'])
-
-    # apply feature builder function to each row
-    print('Creating feature vectors from training set...')
-    features = np.array(train.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
-
-    print('Performing linear regression...')
-    model = sm.OLS(prices, features)
-    results = model.fit()
-
-    print(results.summary())
-    logging.info(results.summary())
-
-    preds = np.array(results.get_prediction(features).summary_frame(alpha=0.05)['mean'])
-    r2 = r2_score(prices, preds)
-    print(f'Training set: R2 = {r2}')
-    logging.info(f'Training set: R2 = {r2}')
-
-    actual_prices = np.array(val['price'])
-
-    # iterate through the validation set, making prediction for each of them
-    print('Creating feature vectors from validation set...')
-    pred_features = np.array(val.apply(partial(build_feature, dist=dist, timedelta=365), axis=1).values.tolist())
-
-    pred_prices = np.array(results.get_prediction(pred_features).summary_frame(alpha=0.05)['mean'])
-
-    r2 = r2_score(actual_prices, pred_prices)
-    print(f'Validation set: R2 = {r2}')
-    logging.info(f'Validation set: R2 = {r2}')
-
-    if r2 < 0.3:
-        print('WARNING: low R2 value on validation set')
-        logging.info('WARNING: low R2 value on validation set')
-
-    test = {'latitude': latitude,
-        'longitude': longitude,
-        'date_of_transfer': date,
-        'property_type': property_type}
-    
-    test_features = np.array([build_feature(test, dist=500, timedelta=365)])
-
-    test_price = results.get_prediction(test_features).summary_frame(alpha=0.05)['mean'][0]
-    return test_price
+        feature.append(len(pois))
+        
+    return feature
     pass
 
 
@@ -264,11 +119,13 @@ def predict_price(latitude, longitude, date, property_type, local=True, filepath
     df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
     df = df.loc[property_type == df['property_type']]
 
-    # sort date column
+    # sort date column for later sampling
     df = df.sort_values(by='date_of_transfer')
 
     # create numeric date column
-    df['date_numeric'] = assess.datetime_to_number(df['date_of_transfer'])
+    date_numeric = assess.datetime_to_number(pd.concat([df['date_of_transfer'], pd.DataFrame([date])]))
+    df['date_numeric'] = date_numeric.iloc[:-1]
+    date_numeric = date_numeric.iloc[-1][0]
 
     # sample from entire dataset to build the training set - should this depend on the size of the dataset?
     if len(df) < 100:
@@ -295,14 +152,14 @@ def predict_price(latitude, longitude, date, property_type, local=True, filepath
 
     preds = np.array(results.get_prediction(features).summary_frame(alpha=0.05)['mean'])
     r2 = r2_score(prices, preds)
-    print(f'Training set: R2 = {r2}')
-    logging.info(f'Training set: R2 = {r2}')
+    print(f'Training set: R2 = {r2:.3f}')
+    logging.info(f'Training set: R2 = {r2:.3f}')
 
     test = {'latitude': latitude,
             'longitude': longitude,
             'date_of_transfer': date,
             'property_type': property_type,
-            'date_numeric': assess.datetime_to_number(date)}
+            'date_numeric': date_numeric}
     
     features_test = np.array([build_feature(df, test)])
 

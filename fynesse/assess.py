@@ -38,6 +38,7 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
     return df
     pass
 
+
 def sample_from(df, n):
     """
     Returns a list of indices.
@@ -47,12 +48,19 @@ def sample_from(df, n):
     return samples
     pass
 
+
 def datetime_to_number(column):
     """
     Transform a column of datetime type to number type.
     """
     return (column - np.min(column)) / np.timedelta64(1,'D')
     pass
+
+
+def meter_to_degree(x):
+    return x / 1000 / (40075/360)
+    pass
+
 
 def bbox(point1, point2, dist):
     """
