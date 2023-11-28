@@ -3,6 +3,8 @@ import pandas as pd
 import statsmodels.api as sm
 from sklearn.metrics import r2_score
 import osmnx as ox
+import folium
+from folium.plugins import HeatMap
 
 from .config import *
 
@@ -172,6 +174,25 @@ def plot_geography(ax, place_name, latitude, longitude, pois, dist):
     pois.plot(ax=ax, color="blue", alpha=0.7, markersize=10)
     pass
 
+
+def plot_geo_heatmap(df, target):
+    # Load your data into a pandas DataFrame
+    # Assuming your DataFrame is named df with columns: 'latitude', 'longitude', 'price'
+    # Replace this with your actual data loading process
+
+    # Create a map centered around the UK
+    uk_map = folium.Map(location=[54.7023545, -3.2765753], zoom_start=6)
+
+    # Ensure the data is aggregated by location (latitude, longitude) and house prices
+    heat_data = df[['latitude', 'longitude', target]].groupby(['latitude', 'longitude']).sum().reset_index().values.tolist()
+
+    # Plot heatmap using HeatMap from folium.plugins
+    HeatMap(heat_data, radius=10, blur=15).add_to(uk_map)
+
+    # Save the map as an HTML file or display it
+    # uk_map.save("prices_heatmap.html")
+    return uk_map
+    pass
 
 
 def query(data):
