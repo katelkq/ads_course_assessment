@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from sklearn.metrics import r2_score
+import osmnx as ox
 
 from .config import *
 
@@ -142,6 +143,36 @@ def plot_correlation(ax, target, feature, label=None, regression=False):
         return r2, (slope, intercept)
 
     pass
+
+
+def plot_geography(ax, place_name, latitude, longitude, pois, dist):
+    graph = ox.graph_from_point((latitude, longitude), dist=dist)
+
+    # Retrieve nodes and edges
+    nodes, edges = ox.graph_to_gdfs(graph)
+
+    # Get place boundary related to the place name as a geodataframe
+    area = ox.geocode_to_gdf(place_name)
+
+    # Plot the footprint
+    area.plot(ax=ax, facecolor="white")
+
+    # Plot street edges
+    edges.plot(ax=ax, linewidth=1, edgecolor="dimgray")
+
+    radius = meter_to_degree(10000)
+    ax.set_xlim([longitude-radius, longitude+radius])
+    ax.set_ylim([latitude-radius, latitude+radius])
+    ax.set_xlabel("longitude")
+    ax.set_ylabel("latitude")
+
+    ax.scatter(longitude, latitude, color='m')
+
+    # Plot all POIs
+    pois.plot(ax=ax, color="blue", alpha=0.7, markersize=10)
+    pass
+
+
 
 def query(data):
     """Request user input for some aspect of the data."""

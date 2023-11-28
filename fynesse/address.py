@@ -102,7 +102,7 @@ def build_feature(df, row):
     pass
 
 
-def predict_price(latitude, longitude, date, property_type, local=True, filepath='./data/prices-coordinates-data.csv', conn=None):
+def predict_price(latitude, longitude, date, property_type, local=False, filepath='./data/prices-coordinates-data.csv', conn=None):
     """
     Price prediction for UK housing.
     """

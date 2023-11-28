@@ -251,7 +251,10 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
     """
     if local:
         print('Loading dataframe from local file...')
-        df = pd.read_csv(filepath)
+        try:
+            df = pd.read_csv(filepath)
+        except:
+            print(f'Error loading dataframe. Are you sure that ')
 
     else:
         print('Loading dataframe from SQL server...')
