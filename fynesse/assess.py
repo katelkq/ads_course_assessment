@@ -65,6 +65,22 @@ def meter_to_degree(x):
     pass
 
 
+def geometry_to_latitude(p):
+    try:
+        return p.y
+    except:
+        return p.centroid.y
+    pass
+
+
+def geometry_to_longitude(p):
+    try:
+        return p.x
+    except:
+        return p.centroid.x
+    pass
+
+
 def bbox(point1, point2, dist):
     """
     Returns whether point2 is within some distance N, S, E, W of point1.

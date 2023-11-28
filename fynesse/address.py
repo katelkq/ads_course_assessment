@@ -111,9 +111,9 @@ def predict_price(latitude, longitude, date, property_type, local=False, filepat
     date = pd.to_datetime(date)
 
     if local:
-        df = assess.data(filepath=filepath)
+        df = assess.data(local=local, filepath=filepath)
     else:
-        df = assess.data(local=False, conn=conn)
+        df = assess.data(local=local, conn=conn)
 
     # filter df based on location and property type
     df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
