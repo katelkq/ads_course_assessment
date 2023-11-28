@@ -63,29 +63,6 @@ def build_feature(df, row):
                np.min(backing_set['price'])]
     
     # osmnx features
-    """
-    tags = {"amenity": True,
-            "healthcare": True,
-            "leisure": True,
-            "shop": True}
-    
-    pois = access.retrieve_pois(latitude=row['latitude'], 
-                                longitude=row['longitude'], 
-                                tags=tags, 
-                                dist=10000)
-    
-    if pois is None:
-        for _ in range(5):
-            feature.append(0)
-    else:
-        feature.append(len(pois))
-        for key in tags.keys():
-            if key in pois.columns:
-                feature.append(len(pois[key].dropna()))
-            else:
-                feature.append(0)
-    """
-
     tags = {"amenity": True}
     
     pois = access.retrieve_pois(latitude=row['latitude'], 
