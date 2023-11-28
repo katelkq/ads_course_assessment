@@ -175,16 +175,13 @@ def plot_geography(ax, place_name, latitude, longitude, pois, dist):
     pass
 
 
-def plot_geo_heatmap(df, target):
+def plot_heatmap(heat_data):
     # Load your data into a pandas DataFrame
     # Assuming your DataFrame is named df with columns: 'latitude', 'longitude', 'price'
     # Replace this with your actual data loading process
 
     # Create a map centered around the UK
     uk_map = folium.Map(location=[54.7023545, -3.2765753], zoom_start=6)
-
-    # Ensure the data is aggregated by location (latitude, longitude) and house prices
-    heat_data = df[['latitude', 'longitude', target]].groupby(['latitude', 'longitude']).sum().reset_index().values.tolist()
 
     # Plot heatmap using HeatMap from folium.plugins
     HeatMap(heat_data, radius=10, blur=15).add_to(uk_map)
