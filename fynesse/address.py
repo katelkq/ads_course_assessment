@@ -108,7 +108,7 @@ def predict_price(latitude, longitude, date, property_type, local=False, filepat
     # filter df based on location and property type
     df = df.loc[property_type == df['property_type']]
 
-    while len(df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), dist)]) < 10:
+    while len(df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), dist)]) < 20:
         dist += 500
 
     df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), dist)]
