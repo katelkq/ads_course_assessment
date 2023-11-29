@@ -41,7 +41,7 @@ def split_dataset(dataset, split=0.8):
     pass
 
 
-def retrieve_backing_set(df, row, dist, timedelta):
+def retrieve_backing_set(df, dist, timedelta, row):
     """
     Retrieves the backing set of the specified row.
     """
@@ -54,7 +54,14 @@ def retrieve_backing_set(df, row, dist, timedelta):
 
 
 def build_feature(df, row):
-    backing_set = retrieve_backing_set(df, row, dist=500, timedelta=180)
+    backing_set = []
+    dist = 500
+    timedelta = 180
+
+    while len(backing_set) == 0:
+        backing_set = retrieve_backing_set(df, dist, timedelta, row)
+        dist += 500
+        timedelta += 180
 
     # timeseries and backing set features
     feature = [row['date_numeric'],
@@ -63,7 +70,10 @@ def build_feature(df, row):
                np.min(backing_set['price'])]
     
     # osmnx features
-    tags = {"amenity": True}
+    tags = {"amenity": True,
+            "healthcare": True,
+            "leisure": True,
+            "shop": True}
     
     pois = access.retrieve_pois(latitude=row['latitude'], 
                                 longitude=row['longitude'], 
@@ -92,9 +102,16 @@ def predict_price(latitude, longitude, date, property_type, local=False, filepat
     else:
         df = assess.data(local=local, conn=conn)
 
+    # initialize bounding box parameters
+    dist = 500
+
     # filter df based on location and property type
-    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), 500)]
     df = df.loc[property_type == df['property_type']]
+
+    while len(df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), dist)]) < 10:
+        dist += 500
+
+    df = df.loc[assess.bbox((latitude, longitude), (df['latitude'], df['longitude']), dist)]
 
     # sort date column for later sampling
     df = df.sort_values(by='date_of_transfer')
@@ -108,7 +125,7 @@ def predict_price(latitude, longitude, date, property_type, local=False, filepat
     if len(df) < 100:
         dataset = df
     else:
-        indices = np.arange(0, len(df), step=len(df)//100)
+        indices = np.random.choice(np.arange(len(df)), size=100, replace=False)
         dataset = df.iloc[indices]
 
     print(f'Size of the training set: {len(dataset)}')

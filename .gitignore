@@ -1,8 +1,13 @@
 __pycache__
 cache
+
 data
 logs
-main.py
+*.log
+
 credentials.yaml
 
-*.log
+main.py
+test.py
+test2.py
+test4.py

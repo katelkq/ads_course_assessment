@@ -27,7 +27,7 @@ postcode_fields = ['postcode', 'status', 'usertype', 'easting', 'northing', 'pos
 pc_fields = ['price', 'date_of_transfer', 'postcode', 'property_type', 'new_build_flag', 'tenure_type', 'locality', 'town_city', 'district', 'county', 'country', 'latitude', 'longitude']
 
 
-def data(conn=None, table='prices_coordinates_data', where=None, filepath='./data/prices-coordinates-data.csv', local=True):
+def data(conn=None, table='prices_coordinates_data', where=None, filepath='./data/prices-coordinates-data.csv', local=False):
     """
     Load the data from access and ensure missing values are correctly encoded as well as indices correct, column names informative, date and times correctly formatted. Return a structured data structure such as a data frame.
     """

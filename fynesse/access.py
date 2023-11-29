@@ -241,7 +241,7 @@ def retrieve_pois(latitude, longitude, tags, dist, output=False):
     pass
 
 
-def data(conn=None, table='prices_coordinates_data', where=None, filepath='./data/prices-coordinates-data.csv', local=True):
+def data(conn=None, table='prices_coordinates_data', where=None, filepath='./data/prices-coordinates-data.csv', local=False):
     """
     Read the data from the web or local file, returning structured format as a dataframe
     :param conn:
@@ -254,7 +254,7 @@ def data(conn=None, table='prices_coordinates_data', where=None, filepath='./dat
         try:
             df = pd.read_csv(filepath)
         except:
-            print(f'Error loading dataframe. Are you sure that ')
+            print(f'Error loading dataframe. Are you sure that you have the file as {filepath}?')
 
     else:
         print('Loading dataframe from SQL server...')
